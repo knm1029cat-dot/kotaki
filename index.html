@@ -6,13 +6,13 @@
   <title>心理学用語トレーニング</title>
   <style>
     :root {
-      --bg: #f4f6fb;
+      --bg: #f5f7fc;
       --card: #ffffff;
-      --text: #222;
-      --muted: #667085;
-      --border: #e6e8ef;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
       --accent: #4f46e5;
-      --accent-soft: #eef0ff;
+      --accent-soft: #eef2ff;
       --good: #16a34a;
       --mid: #d97706;
       --bad: #dc2626;
@@ -24,7 +24,7 @@
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Yu Gothic", sans-serif;
-      background: linear-gradient(180deg, #f7f8fd 0%, #f2f5fb 100%);
+      background: linear-gradient(180deg, #f8f9fd 0%, #f3f6fc 100%);
       color: var(--text);
       line-height: 1.6;
     }
@@ -36,7 +36,7 @@
     }
 
     h1 {
-      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
       margin: 0 0 6px;
     }
 
@@ -80,7 +80,9 @@
       font-size: 0.98rem;
     }
 
-    .answer.show { display: block; }
+    .answer.show {
+      display: block;
+    }
 
     .buttons, .eval-buttons, .mode-buttons {
       display: flex;
@@ -96,9 +98,8 @@
       font-size: 0.98rem;
       font-weight: 600;
       cursor: pointer;
-      transition: transform 0.04s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+      transition: transform 0.04s ease, opacity 0.2s ease;
       min-height: 48px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
     }
 
     button:active { transform: translateY(1px); }
@@ -309,8 +310,8 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'psych_terms_data_v2';
-    const PROGRESS_KEY = 'psych_terms_progress_v2';
+    const STORAGE_KEY = 'psych_terms_data_v3';
+    const PROGRESS_KEY = 'psych_terms_progress_v3';
 
     const defaultTerms = [
       { term: '古典的条件づけ', answer: '中性刺激と無条件刺激を対提示することで、中性刺激が条件刺激となり、条件反応を引き起こすようになる学習。' },
@@ -327,32 +328,32 @@
     let dailySet = [];
     let dailyAnswered = [];
 
-    function loadTerms() {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          terms = JSON.parse(saved);
-        } catch {
-          terms = [...defaultTerms];
-        }
-      } else {
-        terms = [...defaultTerms];
-      }
-
+    function loadData() {
+      const savedTerms = localStorage.getItem(STORAGE_KEY);
       const savedProgress = localStorage.getItem(PROGRESS_KEY);
-      if (savedProgress) {
-        try {
-          progress = JSON.parse(savedProgress);
-        } catch {
-          progress = {};
-        }
+
+      try {
+        terms = savedTerms ? JSON.parse(savedTerms) : [];
+      } catch (e) {
+        terms = [];
       }
 
-      document.getElementById('termsInput').value = terms
-        .map(item => `${item.term} | ${item.answer}`)
-        .join('
+      try {
+        progress = savedProgress ? JSON.parse(savedProgress) : {};
+      } catch (e) {
+        progress = {};
+      }
+
+      if (!Array.isArray(terms)) {
+        terms = [];
+      }
+
+      const text = terms.map(function(item) {
+        return item.term + ' | ' + item.answer;
+      }).join('
 ');
 
+      document.getElementById('termsInput').value = text;
       rebuildDailySet();
       updateCounts();
       updateTermCount();
@@ -361,16 +362,19 @@
     }
 
     function updateTermCount() {
-      document.getElementById('termCount').textContent = `${terms.length}語`;
+      document.getElementById('termCount').textContent = terms.length + '語';
       updateSessionCount();
     }
 
     function updateSessionCount() {
-      document.getElementById('sessionCount').textContent = `今日の10問 ${dailyAnswered.length}/${dailySet.length || 10}`;
+      const total = dailySet.length ? dailySet.length : Math.min(10, terms.length || 10);
+      document.getElementById('sessionCount').textContent = '今日の10問 ' + dailyAnswered.length + '/' + total;
     }
 
     function rebuildDailySet() {
-      const shuffled = [...terms].sort(() => Math.random() - 0.5);
+      const shuffled = terms.slice().sort(function() {
+        return Math.random() - 0.5;
+      });
       dailySet = shuffled.slice(0, Math.min(10, shuffled.length));
       dailyAnswered = [];
       updateSessionCount();
@@ -378,7 +382,7 @@
 
     function getPool() {
       if (currentMode === 'weak') {
-        const weak = terms.filter(item => {
+        const weak = terms.filter(function(item) {
           const state = progress[item.term];
           return state === 'mid' || state === 'bad' || !state;
         });
@@ -386,16 +390,18 @@
       }
 
       if (currentMode === 'daily') {
-        const unanswered = dailySet.filter(item => !dailyAnswered.includes(item.term));
+        const unanswered = dailySet.filter(function(item) {
+          return dailyAnswered.indexOf(item.term) === -1;
+        });
         return unanswered.length ? unanswered : dailySet;
       }
 
       return terms;
     }
 
-    function nextQuestion(initial = false) {
+    function nextQuestion(initial) {
       if (!terms.length) {
-        document.getElementById('term').textContent = '用語がありません';
+        document.getElementById('term').textContent = '用語を入れるとここに問題が出るよ';
         document.getElementById('answer').classList.remove('show');
         document.getElementById('answer').textContent = '';
         return;
@@ -414,24 +420,27 @@
         return;
       }
 
-      let next;
-      if (pool.length === 1) {
-        next = 0;
-      } else {
-        const currentTerm = terms[currentIndex]?.term;
+      let next = 0;
+      if (pool.length > 1) {
+        const currentTerm = terms[currentIndex] ? terms[currentIndex].term : '';
         do {
           next = Math.floor(Math.random() * pool.length);
-        } while (pool[next].term === currentTerm && pool.length > 1);
+        } while (pool[next].term === currentTerm);
       }
 
       const selected = pool[next];
-      currentIndex = terms.findIndex(item => item.term === selected.term);
+      currentIndex = terms.findIndex(function(item) {
+        return item.term === selected.term;
+      });
+
       document.getElementById('term').textContent = terms[currentIndex].term;
       const answerBox = document.getElementById('answer');
       answerBox.classList.remove('show');
       answerBox.textContent = terms[currentIndex].answer;
 
-      if (!initial) window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (!initial) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
 
     function showAnswer() {
@@ -441,45 +450,63 @@
     function evaluateCurrent(level) {
       const current = terms[currentIndex];
       if (!current) return;
+
       progress[current.term] = level;
-      if (currentMode === 'daily' && !dailyAnswered.includes(current.term)) {
+      if (currentMode === 'daily' && dailyAnswered.indexOf(current.term) === -1) {
         dailyAnswered.push(current.term);
       }
+
       localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
       updateCounts();
       updateSessionCount();
-      nextQuestion();
+      nextQuestion(false);
     }
 
     function updateCounts() {
       const values = Object.values(progress);
-      const good = values.filter(v => v === 'good').length;
-      const mid = values.filter(v => v === 'mid').length;
-      const bad = values.filter(v => v === 'bad').length;
+      const good = values.filter(function(v) { return v === 'good'; }).length;
+      const mid = values.filter(function(v) { return v === 'mid'; }).length;
+      const bad = values.filter(function(v) { return v === 'bad'; }).length;
+
       document.getElementById('goodCount').textContent = good;
       document.getElementById('midCount').textContent = mid;
       document.getElementById('badCount').textContent = bad;
+
       const rate = terms.length ? Math.round((good / terms.length) * 100) : 0;
-      document.getElementById('progressRate').textContent = `${rate}%`;
+      document.getElementById('progressRate').textContent = rate + '%';
+    }
+
+    function normalizeLine(line) {
+      return line.replace(/｜/g, '|').trim();
     }
 
     function saveTerms() {
-      const raw = document.getElementById('termsInput').value.trim();
-      const lines = raw.split('
-').map(line => line.trim()).filter(Boolean);
+      const raw = document.getElementById('termsInput').value;
+      const lines = raw.split(/
+?
+/).map(normalizeLine).filter(function(line) {
+        return line.length > 0;
+      });
+
       const parsed = [];
 
-      for (const line of lines) {
-        const parts = line.split('|');
-        if (parts.length < 2) continue;
+      for (let i = 0; i < lines.length; i += 1) {
+        const parts = lines[i].split('|');
+        if (parts.length < 2) {
+          alert((i + 1) + '行目の形式が違うよ。
+「用語 | 説明」の形で入力してね。');
+          return;
+        }
+
         const term = parts[0].trim();
         const answer = parts.slice(1).join('|').trim();
-        if (term && answer) parsed.push({ term, answer });
-      }
 
-      if (!parsed.length) {
-        alert('「用語 | 説明」の形で1つ以上入力してね。');
-        return;
+        if (!term || !answer) {
+          alert((i + 1) + '行目が空っぽになってるよ。');
+          return;
+        }
+
+        parsed.push({ term: term, answer: answer });
       }
 
       terms = parsed;
@@ -492,10 +519,11 @@
     }
 
     function loadSampleTerms() {
-      document.getElementById('termsInput').value = defaultTerms
-        .map(item => `${item.term} | ${item.answer}`)
-        .join('
+      const text = defaultTerms.map(function(item) {
+        return item.term + ' | ' + item.answer;
+      }).join('
 ');
+      document.getElementById('termsInput').value = text;
     }
 
     function resetProgress() {
@@ -523,7 +551,7 @@
       document.getElementById('dailyModeBtn').classList.toggle('active', currentMode === 'daily');
     }
 
-    loadTerms();
+    loadData();
   </script>
 </body>
 </html>
