@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>心理学用語トレーニング</title>
+
+<style>
+
+:root {
+  --bg:#f5f7fc;
+  --card:#ffffff;
+  --text:#1f2937;
+  --muted:#6b7280;
+  --border:#e5e7eb;
+  --accent:#4f46e5;
+  --accent-soft:#eef2ff;
+  --good:#16a34a;
+  --mid:#d97706;
+  --bad:#dc2626;
+  --shadow:0 10px 28px rgba(15,23,42,.06);
+}
+
+*{box-sizing:border-box;}
+
+body{
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Yu Gothic",sans-serif;
+background:linear-gradient(180deg,#f8f9fd 0%,#f3f6fc 100%);
+color:var(--text);
+line-height:1.6;
+}
+
+.container{
+max-width:960px;
+margin:0 auto;
+padding:18px 14px 40px;
+}
+
+h1{
+font-size:clamp(1.6rem,4vw,2.2rem);
+margin:0 0 6px;
+}
+
+.sub{
+color:var(--muted);
+margin-bottom:16px;
+font-size:.95rem;
+}
+
+.card{
+background:var(--card);
+border:1px solid var(--border);
+border-radius:20px;
+padding:18px;
+box-shadow:var(--shadow);
+margin-bottom:14px;
+}
+
+.label{
+font-size:.9rem;
+color:var(--muted);
+margin-bottom:8px;
+}
+
+.term{
+font-size:clamp(1.45rem,5vw,2rem);
+font-weight:800;
+margin-bottom:10px;
+line-height:1.3;
+word-break:break-word;
+}
+
+.answer{
+display:none;
+margin-top:14px;
+padding:14px;
+border-radius:14px;
+background:#fafbff;
+border:1px solid var(--border);
+white-space:pre-wrap;
+font-size:.98rem;
+}
+
+.answer.show{display:block;}
+
+.buttons,.eval-buttons,.mode-buttons{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+margin-top:14px;
+}
+
+button{
+border:none;
+border-radius:14px;
+padding:13px 16px;
+font-size:.98rem;
+font-weight:600;
+cursor:pointer;
+min-height:48px;
+}
+
+.primary{background:var(--accent);color:white;}
+.secondary{background:var(--accent-soft);color:var(--accent);}
+
+.good{background:#ecfdf3;color:var(--good);}
+.mid{background:#fff7ed;color:var(--mid);}
+.bad{background:#fef2f2;color:var(--bad);}
+
+textarea{
+width:100%;
+min-height:140px;
+border:1px solid var(--border);
+border-radius:14px;
+padding:14px;
+font:inherit;
+resize:vertical;
+background:#fff;
+}
+
+.stats{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:10px;
+}
+
+.stat-box{
+background:#fafbff;
+border:1px solid var(--border);
+border-radius:14px;
+padding:14px;
+}
+
+.stat-title{color:var(--muted);font-size:.88rem;}
+.stat-value{font-size:1.35rem;font-weight:800;margin-top:4px;}
+
+.mode-buttons button.active{
+outline:2px solid rgba(79,70,229,.18);
+}
+
+@media(max-width:640px){
+.stats{grid-template-columns:repeat(2,1fr);}
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>心理学用語トレーニング</h1>
+<div class="sub">用語を見て自分で説明 → 答え確認 → 自己評価</div>
+
+<div class="card">
+
+<div class="label">問題</div>
+<div id="term" class="term">用語を入れるとここに問題が出るよ</div>
+
+<div class="mode-buttons">
+<button onclick="setMode('all')">全問題</button>
+<button onclick="setMode('weak')">苦手中心</button>
+<button onclick="setMode('daily')">今日の10問</button>
+<button onclick="setMode('bad')">✕だけ</button>
+</div>
+
+<div class="label">自分の説明を書く</div>
+<textarea id="userAnswer" placeholder="ここに説明を書いてみよう"></textarea>
+
+<div id="answer" class="answer"></div>
+
+<div class="buttons">
+<button class="primary" onclick="showAnswer()">答えを見る</button>
+<button class="secondary" onclick="nextQuestion()">次の問題</button>
+</div>
+
+<div class="eval-buttons">
+<button class="good" onclick="evaluateCurrent('good')">◎ 書けた</button>
+<button class="mid" onclick="evaluateCurrent('mid')">△ あいまい</button>
+<button class="bad" onclick="evaluateCurrent('bad')">✕ わからない</button>
+</div>
+
+</div>
+
+<div class="card">
+
+<div class="label">学習状況</div>
+
+<div class="stats">
+<div class="stat-box">
+<div class="stat-title">◎ 書けた</div>
+<div id="goodCount" class="stat-value">0</div>
+</div>
+
+<div class="stat-box">
+<div class="stat-title">△ あいまい</div>
+<div id="midCount" class="stat-value">0</div>
+</div>
+
+<div class="stat-box">
+<div class="stat-title">✕ わからない</div>
+<div id="badCount" class="stat-value">0</div>
+</div>
+
+<div class="stat-box">
+<div class="stat-title">進捗率</div>
+<div id="progressRate" class="stat-value">0%</div>
+</div>
+</div>
+
+</div>
+
+<div class="card">
+
+<div class="label">用語を追加・編集する</div>
+
+<textarea id="termsInput"></textarea>
+
+<div class="buttons">
+<button class="primary" onclick="saveTerms()">保存する</button>
+<button class="secondary" onclick="resetProgress()">評価だけリセット</button>
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const STORAGE_KEY='psych_terms_data_v5';
+const PROGRESS_KEY='psych_terms_progress_v5';
+
+let terms=[];
+let progress={};
+let queue=[];
+let queueIndex=0;
+let currentIndex=0;
+let currentMode='all';
+
+function loadData(){
+
+const savedTerms=localStorage.getItem(STORAGE_KEY);
+const savedProgress=localStorage.getItem(PROGRESS_KEY);
+
+terms=savedTerms?JSON.parse(savedTerms):[];
+progress=savedProgress?JSON.parse(savedProgress):{};
+
+const text=terms.map(t=>t.term+" | "+t.answer).join("\n");
+document.getElementById("termsInput").value=text;
+
+rebuildQueue();
+updateCounts();
+nextQuestion();
+
+}
+
+function rebuildQueue(){
+
+queue=terms.slice().sort(()=>Math.random()-.5);
+queueIndex=0;
+
+}
+
+function getPool(){
+
+if(currentMode==='bad'){
+return terms.filter(t=>progress[t.term]==='bad');
+}
+
+if(currentMode==='weak'){
+return terms.filter(t=>{
+const s=progress[t.term];
+return s==='mid'||s==='bad'||!s;
+});
+}
+
+return terms;
+
+}
+
+function nextQuestion(){
+
+const pool=getPool();
+
+if(!pool.length){
+document.getElementById("term").textContent="問題なし";
+return;
+}
+
+if(queueIndex>=queue.length) rebuildQueue();
+
+const item=queue[queueIndex];
+queueIndex++;
+
+currentIndex=terms.findIndex(t=>t.term===item.term);
+
+document.getElementById("term").textContent=item.term;
+
+const answerBox=document.getElementById("answer");
+answerBox.classList.remove("show");
+answerBox.textContent="";
+
+document.getElementById("userAnswer").value="";
+
+}
+
+function showAnswer(){
+
+const answerBox=document.getElementById("answer");
+const user=document.getElementById("userAnswer").value;
+
+answerBox.classList.add("show");
+
+answerBox.textContent=
+"あなたの回答\n"+
+user+
+"\n\n正解\n"+
+terms[currentIndex].answer;
+
+answerBox.scrollIntoView({behavior:"smooth"});
+
+}
+
+function evaluateCurrent(level){
+
+const item=terms[currentIndex];
+progress[item.term]=level;
+
+localStorage.setItem(PROGRESS_KEY,JSON.stringify(progress));
+
+updateCounts();
+nextQuestion();
+
+}
+
+function updateCounts(){
+
+const values=Object.values(progress);
+
+const good=values.filter(v=>v==="good").length;
+const mid=values.filter(v=>v==="mid").length;
+const bad=values.filter(v=>v==="bad").length;
+
+document.getElementById("goodCount").textContent=good;
+document.getElementById("midCount").textContent=mid;
+document.getElementById("badCount").textContent=bad;
+
+const rate=terms.length?Math.round((good/terms.length)*100):0;
+
+document.getElementById("progressRate").textContent=rate+"%";
+
+}
+
+function saveTerms(){
+
+const raw=document.getElementById("termsInput").value;
+
+const lines=raw.split(/\n/).map(l=>l.trim()).filter(l=>l);
+
+const parsed=[];
+
+for(let i=0;i<lines.length;i++){
+
+const parts=lines[i].split("|");
+
+if(parts.length<2){
+alert((i+1)+"行目の形式が違うよ");
+return;
+}
+
+parsed.push({
+term:parts[0].trim(),
+answer:parts.slice(1).join("|").trim()
+});
+
+}
+
+terms=parsed;
+
+localStorage.setItem(STORAGE_KEY,JSON.stringify(terms));
+
+rebuildQueue();
+updateCounts();
+nextQuestion();
+
+alert("保存したよ");
+
+}
+
+function resetProgress(){
+
+progress={};
+
+localStorage.setItem(PROGRESS_KEY,JSON.stringify(progress));
+
+updateCounts();
+
+}
+
+function setMode(mode){
+
+currentMode=mode;
+rebuildQueue();
+nextQuestion();
+
+}
+
+loadData();
+
+</script>
+
+</body>
+</html>
